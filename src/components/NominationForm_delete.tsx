@@ -235,34 +235,32 @@ export const NominationForm = () => {
     maintainFocus()
   }
   const handleValueSelect = (value: string) => {
-    const isAlreadySelected = formState.selectedValues.includes(value)
-    if (isAlreadySelected) {
-      setFormState((prev) => ({
-        ...prev,
-        selectedValues: prev.selectedValues.filter((v) => v !== value),
-        nomineeValues: prev.selectedValues
-          .filter((v) => v !== value)
-          .join(', '),
-      }))
-    } else {
-      setFormState((prev) => ({
-        ...prev,
-        selectedValues: [...prev.selectedValues, value],
-        nomineeValues:
-          prev.selectedValues.length > 0
-            ? `${prev.selectedValues.join(', ')}, ${value}`
-            : value,
-      }))
-    }
+    // When a value is selected, save it and show the description
+    setFormState((prev) => ({
+      ...prev,
+      selectedValues: [...prev.selectedValues, value],
+      nomineeValues: prev.nomineeValues
+        ? `${prev.nomineeValues}, ${value}`
+        : value,
+    }))
     // Show the description of the selected value
-    if (!isAlreadySelected) {
-      addSystemMessage(
-        <div className="p-2 bg-blue-50/20 rounded-lg border border-blue-100/30 mt-1">
-          <p className="font-medium text-blue-100 mb-1">{value}:</p>
-          <p>{valueDescriptions[value]}</p>
-        </div>,
-      )
-    }
+    addSystemMessage(
+      <div className="p-2 bg-blue-50/20 rounded-lg border border-blue-100/30 mt-1">
+        <p className="font-medium text-blue-100 mb-1">{value}:</p>
+        <p>{valueDescriptions[value]}</p>
+      </div>,
+    )
+    setTimeout(() => {
+      setIsTyping(true)
+      setTimeout(() => {
+        setIsTyping(false)
+        addSystemMessage(
+          `How does ${formState.nomineeName} demonstrate the "${value}" value? Please provide specific examples.`,
+        )
+        setShowQuickReplies(false)
+        maintainFocus()
+      }, 1500)
+    }, 1000)
   }
   const handleNomineeNameSubmitted = (name: string) => {
     setTimeout(() => {
@@ -275,9 +273,10 @@ export const NominationForm = () => {
           setTimeout(() => {
             setIsTyping(false)
             addSystemMessage(
-              `Why are you nominating ${name}? Please share what they did that deserves recognition.`,
+              'Which core value does this person best demonstrate? Please select one:',
             )
             setCurrentStep('nomineeValues')
+            setShowQuickReplies(true)
             maintainFocus()
           }, 1500)
         }, 1000)
@@ -290,14 +289,42 @@ export const NominationForm = () => {
       setTimeout(() => {
         setIsTyping(false)
         addSystemMessage(
-          `That's a wonderful example! Which of our core values are demonstrated in this action? (Select all that apply)`,
+          `Thank you for sharing these examples! That's really helpful.`,
         )
-        setFormState((prev) => ({
-          ...prev,
-          valueDetails: details,
-        }))
-        setShowQuickReplies(true)
-        maintainFocus()
+        setTimeout(() => {
+          setIsTyping(true)
+          setTimeout(() => {
+            setIsTyping(false)
+            const summary = (
+              <div className="space-y-2">
+                <p className="font-medium">
+                  Here's a summary of your nomination:
+                </p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>
+                    <span className="font-medium">Nominee:</span>{' '}
+                    {formState.nomineeName}
+                  </li>
+                  <li>
+                    <span className="font-medium">
+                      Core values demonstrated:
+                    </span>{' '}
+                    {formState.nomineeValues}
+                  </li>
+                  <li>
+                    <span className="font-medium">Details:</span>{' '}
+                    {formState.valueDetails}
+                  </li>
+                </ul>
+                <p className="mt-3">
+                  Would you like to submit this nomination?
+                </p>
+              </div>
+            )
+            addSystemMessage(summary)
+            setCurrentStep('confirmation')
+          }, 1800)
+        }, 1000)
       }, 1500)
     }, 500)
   }
@@ -520,68 +547,21 @@ export const NominationForm = () => {
         }}
         className="flex flex-wrap gap-2 mb-4"
       >
-        {companyValues.map((value) => {
-          const isSelected = formState.selectedValues.includes(value)
-          return (
-            <motion.button
-              key={value}
-              whileHover={{
-                scale: 1.05,
-              }}
-              whileTap={{
-                scale: 0.95,
-              }}
-              onClick={() => handleValueSelect(value)}
-              className={`px-4 py-2 rounded-full text-sm transition-all duration-200 font-medium
-                ${isSelected ? 'bg-navy-blue text-white ring-2 ring-offset-2 ring-navy-blue' : 'bg-blue-100 hover:bg-blue-200 text-navy-blue'}`}
-            >
-              {value}
-              {isSelected && ' ✓'}
-            </motion.button>
-          )
-        })}
-        {formState.selectedValues.length > 0 && (
+        {companyValues.map((value) => (
           <motion.button
+            key={value}
             whileHover={{
               scale: 1.05,
             }}
             whileTap={{
               scale: 0.95,
             }}
-            onClick={() => {
-              addSystemMessage(
-                <div className="space-y-2">
-                  <p className="font-medium">
-                    Here's a summary of your nomination:
-                  </p>
-                  <ul className="list-disc pl-5 space-y-1">
-                    <li>
-                      <span className="font-medium">Nominee:</span>{' '}
-                      {formState.nomineeName}
-                    </li>
-                    <li>
-                      <span className="font-medium">What they did:</span>{' '}
-                      {formState.valueDetails}
-                    </li>
-                    <li>
-                      <span className="font-medium">
-                        Core values demonstrated:
-                      </span>{' '}
-                      {formState.nomineeValues}
-                    </li>
-                  </ul>
-                  <p className="mt-3">
-                    Would you like to submit this nomination?
-                  </p>
-                </div>,
-              )
-              setCurrentStep('confirmation')
-            }}
-            className="px-6 py-2 rounded-full bg-green-600 text-white font-medium hover:bg-green-700"
+            onClick={() => handleValueSelect(value)}
+            className="bg-blue-100 hover:bg-blue-200 text-navy-blue font-medium px-4 py-2 rounded-full text-sm transition-colors duration-200"
           >
-            Continue
+            {value}
           </motion.button>
-        )}
+        ))}
       </motion.div>
     )
   }
@@ -601,7 +581,7 @@ export const NominationForm = () => {
                 currentStep === 'nomineeName'
                   ? "Enter nominee's name..."
                   : currentStep === 'nomineeValues'
-                    ? 'Describe what they did that deserves recognition...'
+                    ? 'Describe how they demonstrate this value...'
                     : ''
               }
               className="flex-1 py-3 px-4 bg-transparent outline-none rounded-full"
